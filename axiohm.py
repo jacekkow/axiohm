@@ -232,7 +232,7 @@ class Axiohm:
 	
 	# PRINT POSITION
 	
-	def moveAbsolute(self, dots):
+	def moveAbsolute(self, dots = 0):
 		self.serial.write("\x1b\x24" + chr(dots % 256) + chr(int(dots/256)))
 	
 	def moveAbsoluteInches(self, inches):
@@ -250,6 +250,7 @@ class Axiohm:
 	def moveRelative(self, dots):
 		if dots < 0:
 			dots = 65536 + dots
+		
 		self.serial.write("\x1b\x5c" + chr(dots % 256) + chr(int(dots/256)))
 	
 	def moveRelativeInches(self, inches):
@@ -263,6 +264,9 @@ class Axiohm:
 			self.moveRelative(int(milimeters * 660 / 120.7))
 		else:
 			self.moveRelative(int(milimeters * 576 / 72))
+	
+	def marginLeft(self, dots = 0):
+		self.serial.write("\x1d\x4c" + chr(dots % 256) + chr(int(dots/256)))
 	
 	# PRINTING
 	
