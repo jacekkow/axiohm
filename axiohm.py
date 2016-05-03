@@ -179,8 +179,8 @@ class Axiohm:
 	def setBarcodeTextPitch(self, pitch = PITCH_STANDARD):
 		self.serial.write("\x1d\x66" + chr(pitch))
 	
-	def setBarcodeHeight(self, width):
-		self.serial.write("\x1d\x68" + chr(width))
+	def setBarcodeHeight(self, height):
+		self.serial.write("\x1d\x68" + chr(height))
 	
 	def setBarcodeHeightInches(self, inches = 1):
 		if self.currentStation == self.STATION_SLIP:
@@ -193,6 +193,9 @@ class Axiohm:
 			self.setBarcodeHeight(int(milimeters / 8.5))
 		else:
 			self.setBarcodeHeight(int(milimeters / 8))
+	
+	def setBarcodeWidth(self, width):
+		self.serial.write("\x1d\x77" + chr(width))
 	
 	# FEEDING
 	
@@ -293,6 +296,17 @@ class Axiohm:
 	def printBarcode(self, type, data):
 		assert(type > 64)
 		self.serial.write("\x1d\x6b" + chr(type) + chr(len(data)) + data)
+	
+	def printCode128(self, bytelist):
+		assert 103 <= bytelist[0] <= 105
+		assert bytelist[1] < 103
+		
+		checksum = bytelist[0]
+		for i, item in enumerate(bytelist):
+			checksum = (checksum + i*item) % 103
+		
+		bytelist.append(checksum)
+		self.printBarcode(self.BARCODE_CODE128, str(bytearray(bytelist)))
 	
 	def printLinesRotatedCCW(self, lines, startingPosition = 0):
 		maxLineLength = max([len(line) for line in lines])
