@@ -53,6 +53,11 @@ class Axiohm:
 	PITCH_STANDARD = 0
 	PITCH_COMPRESSED = 1
 	
+	IMAGE_MODE_8DOT_SINGLE = 0
+	IMAGE_MODE_8DOT_DOUBLE = 1
+	IMAGE_MODE_24DOT_SINGLE = 32
+	IMAGE_MODE_24DOT_DOUBLE = 33
+	
 	def __init__(self, **kwargs):
 		self.serial = serial.Serial(**kwargs)
 		self.currentStation = self.STATION_RECEIPT
@@ -321,6 +326,45 @@ class Axiohm:
 			if startingPosition != 0:
 				self.moveAbsolute(startingPosition)
 			self.printLineUnicode(''.join([line[column] for line in lines]))
+	
+	# IMAGES
+	
+	def selectLogo(self, id):
+		self.serial.write("\x1d\x23" + chr(id % 256))
+	
+	def printLogo(self, mode = 0):
+		self.serial.write("\x1d\x2f" + chr(mode % 4))
+	
+	def printImage(self, image, modeNumber = 33):
+		assert self.currentStation == self.STATION_RECEIPT, \
+			'Printing images on slip station is not supported yet'
+		
+		# Pillow library image
+		image = image.convert("1")
+		from bitstring import BitArray
+		bits = BitArray(bytes=image.tobytes())
+		
+		mode = {
+			self.IMAGE_MODE_8DOT_SINGLE:  { "height": 8,  "width": 288 },
+			self.IMAGE_MODE_8DOT_DOUBLE:  { "height": 8,  "width": 576 },
+			self.IMAGE_MODE_24DOT_SINGLE: { "height": 24, "width": 288 },
+			self.IMAGE_MODE_24DOT_DOUBLE: { "height": 24, "width": 576 },
+		}[modeNumber]
+		
+		if image.height % mode['height'] > 0:
+			bits.append(BitArray(length = image.width * (mode['height'] - image.height % mode['height'])))
+		
+		for startLine in xrange(0, image.height, mode['height']):
+			printData = b''
+			start = startLine * image.width
+			end = start + image.width * mode['height']
+			for x in xrange(0, min(image.width, mode['width'])):
+				printData += ( bits[start + x : end : image.width].bytes )
+			
+			length = int(len(printData) / (mode['height'] / 8))
+			self.serial.write("\x1b\x2a" + chr(modeNumber) + chr(length % 256) + chr(int(length / 256)))
+			self.serial.write(printData)
+			self.serial.write("\r\n")
 	
 	# SLIP
 	
